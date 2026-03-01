@@ -13,9 +13,6 @@ networkx>=3.2.1
 anthropic>=0.25.0
 google-genai>=1.0.0
 
-# Embeddings (local)
-ollama>=0.1.8
-
 # Testing
 pytest>=8.1.0
 pytest-asyncio>=0.23.0
