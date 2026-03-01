@@ -1,7 +1,7 @@
 version: "3.9"
 
 services:
-  api:
+  memory-layer:
     build:
       context: .
       dockerfile: Dockerfile
@@ -11,23 +11,6 @@ services:
       - .env
     volumes:
       - db_data:/app/db
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-
-  dashboard:
-    build:
-      context: ./dashboard
-      dockerfile: Dockerfile
-    ports:
-      - "37777:37777"
-    environment:
-      - VITE_API_URL=http://api:8000
-    depends_on:
-      - api
     restart: unless-stopped
 
 volumes:

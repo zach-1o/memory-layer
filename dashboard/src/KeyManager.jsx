@@ -10,9 +10,20 @@ export default function KeyManager({ api, apiKey, onApiKeyChange }) {
     const fetchKeys = () => {
         setLoading(true);
         fetch(`${api}/api/keys`, { headers: { 'X-Api-Key': apiKey } })
-            .then(r => r.json())
-            .then(data => { setKeys(Array.isArray(data) ? data : []); setLoading(false); })
-            .catch(() => { setKeys([]); setLoading(false); });
+            .then(r => {
+                console.log('List keys status:', r.status);
+                return r.json();
+            })
+            .then(data => { 
+                console.log('Keys data:', data);
+                setKeys(Array.isArray(data) ? data : []); 
+                setLoading(false); 
+            })
+            .catch(err => { 
+                console.error('Fetch keys error:', err); 
+                setKeys([]); 
+                setLoading(false); 
+            });
     };
 
     useEffect(() => { fetchKeys(); }, [apiKey]);
@@ -27,14 +38,18 @@ export default function KeyManager({ api, apiKey, onApiKeyChange }) {
                 body: JSON.stringify({ key_name: newName }),
             });
             const data = await resp.json();
+            console.log('API Response:', resp.status, data);
             setNewName('');
             fetchKeys();
             if (data.api_key) {
                 navigator.clipboard.writeText(data.api_key).catch(() => { });
                 alert(`Key generated and copied to clipboard:\n${data.api_key}`);
+            } else if (data.detail) {
+                alert(`Error: ${data.detail}`);
             }
         } catch (err) {
-            console.error(err);
+            console.error('Generate key error:', err);
+            alert('Failed to generate key. Check console for details.');
         }
         setGenerating(false);
     };
