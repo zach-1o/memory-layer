@@ -224,7 +224,7 @@ export default function App() {
     // Check if server is reachable periodically
     useEffect(() => {
         const checkServer = () => {
-            fetch(`${API} /api/projects`, { method: 'HEAD' })
+            fetch(`${API}/api/projects`, { method: 'HEAD' })
                 .then(() => setIsServerDown(false))
                 .catch(() => setIsServerDown(true));
         };
