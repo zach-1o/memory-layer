@@ -1,12 +1,12 @@
 """
-Graph Extraction Worker — async Gemini 2.0 Flash triple extractor.
+Graph Extraction Worker — async Gemini 2.5 Flash triple extractor.
 
 Extracts directional relationship triples from observation content:
   (Subject, RELATION, Object)
 
 Mirrors the compression worker pattern:
   - Trigger: after observation batch or session end
-  - Model: Gemini 2.0 Flash (cheapest, fastest, structured JSON)
+  - Model: Gemini 2.5 Flash (cheapest, fastest, structured JSON)
   - Run in background — NEVER block MCP responses
   - Fallback: CO_OCCURS edges remain if extraction fails
 """
@@ -68,7 +68,7 @@ async def extract_triples(
     api_key: Optional[str] = None,
 ) -> list[dict]:
     """
-    Extract relationship triples from observation text using Gemini 2.0 Flash.
+    Extract relationship triples from observation text using Gemini 2.5 Flash.
     Returns list of {"subject": str, "relation": str, "object": str}.
     """
     key = api_key or os.getenv("GOOGLE_API_KEY", "")
@@ -86,7 +86,7 @@ async def extract_triples(
 
         client = genai.Client(api_key=key)
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash",
             contents=prompt,
             config={
                 "temperature": 0.1,
