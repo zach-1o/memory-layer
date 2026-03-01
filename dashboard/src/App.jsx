@@ -6,7 +6,10 @@ import KeyManager from './KeyManager';
 import ProjectDetail from './ProjectDetail';
 import './index.css';
 
-const API = import.meta.env.VITE_API_URL || window.location.origin;
+const API = import.meta.env.VITE_API_URL || '';
+
+// Helper to build API endpoint - uses relative path if API is empty
+const apiUrl = (path) => `${API}${path}`;
 
 // ── Shared Components ──
 
@@ -100,7 +103,7 @@ function HomeScreen({ onSelectProject, apiKey }) {
 
     useEffect(() => {
         setLoading(true);
-        fetch(`${API} /api/projects`, { headers: { 'X-Api-Key': apiKey } })
+        fetch(apiUrl('/api/projects'), { headers: { 'X-Api-Key': apiKey } })
             .then(r => r.json())
             .then(data => { setProjects(Array.isArray(data) ? data : []); setLoading(false); })
             .catch(() => { setProjects([]); setLoading(false); });
@@ -224,9 +227,15 @@ export default function App() {
     // Check if server is reachable periodically
     useEffect(() => {
         const checkServer = () => {
-            fetch(`${API}/api/projects`, { method: 'HEAD' })
+            const apiEndpoint = API || '';
+            fetch(`${apiEndpoint}/api/projects`, { method: 'HEAD', mode: 'cors' })
                 .then(() => setIsServerDown(false))
-                .catch(() => setIsServerDown(true));
+                .catch(() => {
+                    // Try without mode for same-origin requests
+                    fetch(`${apiEndpoint}/api/projects`, { method: 'HEAD' })
+                        .then(() => setIsServerDown(false))
+                        .catch(() => setIsServerDown(true));
+                });
         };
         checkServer();
         const interval = setInterval(checkServer, 5000);

@@ -1,7 +1,14 @@
 import { useState, useEffect } from 'react';
 
+const API = import.meta.env.VITE_API_URL || '';
+
+// Helper to build API endpoint - uses relative path if API is empty
+const apiUrl = (path) => `${API}${path}`;
+
+// Helper to display MCP URL in code example
+const getMcpUrl = () => API ? `${API}/mcp` : '/mcp';
+
 export default function ProjectDetail({ project, apiKey, onNavigate, onOpenLayer }) {
-    const API = import.meta.env.VITE_API_URL || window.location.origin;
     const [stats, setStats] = useState({ obs: project.obs_count, entities: project.entity_count, sessions: project.session_count });
 
     const health = Math.min(100, Math.round((stats.obs * 3 + stats.entities * 5)));
@@ -95,7 +102,7 @@ export default function ProjectDetail({ project, apiKey, onNavigate, onOpenLayer
                             navigator.clipboard.writeText(JSON.stringify({
                                 mcpServers: {
                                     "memory-layer": {
-                                        serverUrl: `${API}/mcp`,
+                                        serverUrl: apiUrl('/mcp'),
                                         headers: { "x-api-key": "YOUR_KEY" }
                                     }
                                 }
@@ -107,7 +114,7 @@ export default function ProjectDetail({ project, apiKey, onNavigate, onOpenLayer
                     <div className="config-code">{`{
   "mcpServers": {
     "memory-layer": {
-      "serverUrl": "${API}/mcp",
+      "serverUrl": "${getMcpUrl()}",
       "headers": { "x-api-key": "YOUR_KEY" }
     }
   }
