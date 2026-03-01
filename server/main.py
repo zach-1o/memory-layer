@@ -46,6 +46,12 @@ async def lifespan(app: FastAPI):
     register_api_key("skp_dev_key_12345", user_id="dev_user", key_name="dev-local")
     logger.info("📝 Registered dev API key: skp_dev_key_12345")
 
+    # Register production key from environment if present
+    env_api_key = os.getenv("MEMLAYER_API_KEY")
+    if env_api_key:
+        register_api_key(env_api_key, user_id="production_user", key_name="production-env")
+        logger.info(f"📝 Registered API key from environment: {env_api_key[:8]}...")
+
     yield
 
     logger.info("🧠 Memory Layer MCP Server shutting down...")
