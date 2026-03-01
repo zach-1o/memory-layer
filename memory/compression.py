@@ -107,11 +107,16 @@ async def compress_batch(tenant: Tenant, batch_size: int = 5) -> int:
                 episodic.update_summary(tenant, obs["id"], summary, token_count)
 
                 # Upsert into semantic store for vector search
+                entities_raw = obs.get("entities_mentioned", "[]")
+                if isinstance(entities_raw, list):
+                    import json
+                    entities_raw = json.dumps(entities_raw)
+
                 semantic.upsert_observation(
                     tenant,
                     obs_id=obs["id"],
                     summary=summary,
-                    metadata={"entities": obs.get("entities_mentioned", "[]")},
+                    metadata={"entities": entities_raw},
                 )
 
                 count += 1

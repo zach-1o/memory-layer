@@ -150,7 +150,18 @@ async def extract_and_apply(tenant: Tenant, obs_id: str, raw_content: str, entit
             )
             count += 1
         except ValueError as e:
-            logger.warning(f"Skipped invalid edge: {e}")
+            logger.warning(f"Invalid edge relationship: {e}. Falling back to RELATES_TO.")
+            try:
+                graph.add_edge(
+                    tenant,
+                    source=t["subject"],
+                    target=t["object"],
+                    relationship="RELATES_TO",
+                    metadata={"source_obs": obs_id, "extraction": "gemini-flash", "original_relation": t["relation"]},
+                )
+                count += 1
+            except Exception as outer_e:
+                logger.error(f"Fallback edge failed {t}: {outer_e}")
         except Exception as e:
             logger.error(f"Failed to apply edge {t}: {e}")
 
