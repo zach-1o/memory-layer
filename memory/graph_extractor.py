@@ -26,40 +26,37 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-EXTRACTION_PROMPT = """You are a knowledge graph extraction engine for an AI coding assistant's memory system.
+EXTRACTION_PROMPT = """You are a high-fidelity knowledge graph extraction engine.
 
-Given an observation from a coding session, extract relationship triples: (subject, relation, object).
+Task: Extract relationship triples (subject, relation, object) from the provided coding session observation.
 
-VALID RELATIONS (use ONLY these):
+VALID RELATIONSHIPS (STRICTLY use ONLY these):
 - CALLS: function/method invokes another
 - READS: reads a file or variable
 - WRITES: writes/modifies a file or variable
 - IMPORTS: imports/uses a module or package
-- CONTAINS: file contains a class/function, or class contains method
-- LOCATED_IN: entity is in a file or directory
+- CONTAINS: file contains code item, class contains method
+- LOCATED_IN: entity is defined within a file/directory
 - SENDS_TO: data flows from A to B
 - TRIGGERS: action A causes action B
 - RETURNS: function returns a value/type
-- LOCKS: acquires a lock or mutex
-- CREATES: creates a new entity (file, variable, class)
-- FIXES: a bug fix or patch targets something
+- CREATES: creates a new entity
+- FIXES: a bug fix targets something
 - USES: generic usage relationship
-- DEPENDS_ON: A depends on B
-- EXTENDS: A extends/inherits from B
+- DEPENDS_ON: structural dependency
 
 RULES:
-1. Extract 2-8 triples per observation (don't force it if content is thin)
-2. Subjects and objects should be specific names (file names, function names, class names, variables)
-3. Keep names concise — use base names not full paths when possible
-4. If the observation mentions entities, prioritize relationships between them
-5. Return ONLY valid JSON array, no markdown, no explanation
+1. Extract 3-10 high-value triples.
+2. Names must be concise (e.g., 'main.py' or 'AuthService', not full paths).
+3. If specific entities are provided, focus on their interactions.
+4. Output MUST be a valid JSON array of objects.
 
 OBSERVATION:
 {raw_content}
 
 ENTITIES MENTIONED: {entities}
 
-OUTPUT (Return ONLY a JSON array of objects with keys "subject", "relation", "object"):"""
+OUTPUT (JSON array):"""
 
 
 async def extract_triples(
@@ -86,7 +83,7 @@ async def extract_triples(
 
         client = genai.Client(api_key=key)
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash",
             contents=prompt,
             config={
                 "temperature": 0.1,

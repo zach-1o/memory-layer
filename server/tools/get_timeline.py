@@ -30,6 +30,7 @@ async def get_timeline(tenant: Tenant, obs_id: str, window: int = 5) -> list[dic
             "session_id": obs["session_id"],
             "timestamp": obs["timestamp"],
             "action_type": obs["action_type"],
+            "raw_content": obs.get("raw_content", ""),
             "summary": obs.get("compressed_summary", ""),
             "token_count": obs.get("token_count", 0),
             "entities": obs.get("entities_mentioned", "[]"),

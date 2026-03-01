@@ -189,7 +189,7 @@ def get_timeline(
         rows = conn.execute(
             """
             SELECT id, session_id, timestamp, action_type,
-                   compressed_summary, token_count, entities_mentioned
+                   raw_content, compressed_summary, token_count, entities_mentioned
             FROM observations
             WHERE invalidated_at IS NULL
             ORDER BY ABS(julianday(timestamp) - julianday(?))
@@ -209,7 +209,7 @@ def get_recent(tenant: Tenant, limit: int = 20) -> list[dict]:
         rows = conn.execute(
             """
             SELECT id, session_id, timestamp, action_type,
-                   compressed_summary, token_count, entities_mentioned
+                   raw_content, compressed_summary, token_count, entities_mentioned
             FROM observations
             WHERE invalidated_at IS NULL
             ORDER BY timestamp DESC

@@ -79,21 +79,8 @@ class SessionManager:
             entities=entities,
         )
 
-        # Auto-populate knowledge graph from entities (CO_OCCURS)
-        if entities and len(entities) > 0:
-            try:
-                for entity_name in entities:
-                    graph.add_node(
-                        self.tenant, entity_name, node_type="entity"
-                    )
-                # Connect entities that appear together in the same observation
-                for i, e1 in enumerate(entities):
-                    for e2 in entities[i + 1 :]:
-                        graph.add_edge(
-                            self.tenant, e1, e2, relationship="CO_OCCURS"
-                        )
-            except Exception as e:
-                logger.error(f"Auto-graph population failed: {e}")
+        # Writing to graph is now handled by the background extractor for better quality relationships.
+        # (Removed CO_OCCURS fallback logic)
 
         # Apply explicit graph operations if provided
         if graph_operations:

@@ -56,23 +56,22 @@ async def compress_observation(
         logger.warning("No ANTHROPIC_API_KEY set, returning truncated content as summary")
         return raw_content[:500]
 
-    client = AsyncAnthropic(api_key=key)
-
     try:
-        response = await client.messages.create(
-            model="claude-3-haiku-20240307",
-            max_tokens=200,
-            messages=[
-                {
-                    "role": "user",
-                    "content": COMPRESSION_PROMPT.format(
-                        raw_content=raw_content,
-                        entities=entities,
-                    ),
-                }
-            ],
+        from google import genai
+        client = genai.Client(api_key=key)
+
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=COMPRESSION_PROMPT.format(
+                raw_content=raw_content,
+                entities=entities,
+            ),
+            config={
+                "temperature": 0.1,
+                "max_output_tokens": 200,
+            },
         )
-        return response.content[0].text.strip()
+        return response.text.strip()
     except Exception as e:
         logger.error(f"Compression failed: {e}")
         # Fallback: truncated raw content (never block on compression failure)
