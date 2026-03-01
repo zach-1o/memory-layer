@@ -86,7 +86,7 @@ async def extract_triples(
 
         client = genai.Client(api_key=key)
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-2.0-flash",
             contents=prompt,
             config={
                 "temperature": 0.1,
