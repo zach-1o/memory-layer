@@ -196,7 +196,7 @@ class TestTraceFlow:
         tenant = _make_tenant(project="mcp_trace")
 
         graph.add_edge(tenant, "button", "api", "CALLS")
-        graph.add_edge(tenant, "api", "db", "MODIFIES_STATE")
+        graph.add_edge(tenant, "api", "db", "WRITES")
 
         result = _run(handle_tool_call(tenant, "trace_flow", {
             "from_entity": "button",

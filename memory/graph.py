@@ -14,20 +14,36 @@ Rules from agent.md:
 import json
 import networkx as nx
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Optional
 
 from namespacing.tenant import Tenant
 
 # Valid relationship types per agent.md
 VALID_RELATIONSHIPS = {
-    "CALLS",
-    "IMPORTS",
-    "INVOKES_IPC",
-    "MODIFIES_STATE",
-    "RENDERS",
+    "RELATES_TO",
     "DEPENDS_ON",
-    "DEPRECATED_BY",
+    "CONTAINS",
+    "USES",
+    "CREATED_BY",
+    "MODIFIED_BY",
+    "PART_OF",
+    "REFERENCES",
+    "IMPLEMENTS",
+    "EXTENDS",
+    "OVERRIDES",
+    "CO_OCCURS",
+    # Phase 3: LLM-extracted directional relationships
+    "CALLS",
+    "READS",
+    "WRITES",
+    "IMPORTS",
+    "LOCATED_IN",
+    "SENDS_TO",
+    "TRIGGERS",
+    "RETURNS",
+    "LOCKS",
+    "CREATES",
+    "FIXES",
 }
 
 

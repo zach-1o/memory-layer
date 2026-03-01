@@ -86,41 +86,46 @@ async def compress_batch(tenant: Tenant, batch_size: int = 5) -> int:
 
     Returns the number of observations compressed.
     """
-    uncompressed = episodic.get_uncompressed(tenant, limit=batch_size)
+    try:
+        uncompressed = episodic.get_uncompressed(tenant, limit=batch_size)
 
-    if not uncompressed:
+        if not uncompressed:
+            return 0
+
+        count = 0
+        for obs in uncompressed:
+            try:
+                summary = await compress_observation(
+                    raw_content=obs["raw_content"],
+                    entities=obs.get("entities_mentioned", "[]"),
+                )
+
+                # Estimate token count (~4 chars per token)
+                token_count = len(summary) // 4
+
+                # Update episodic log with compressed summary
+                episodic.update_summary(tenant, obs["id"], summary, token_count)
+
+                # Upsert into semantic store for vector search
+                semantic.upsert_observation(
+                    tenant,
+                    obs_id=obs["id"],
+                    summary=summary,
+                    metadata={"entities": obs.get("entities_mentioned", "[]")},
+                )
+
+                count += 1
+                logger.info(f"Compressed observation {obs['id']} ({token_count} tokens)")
+
+            except Exception as e:
+                logger.error(f"Failed to compress observation {obs['id']}: {e}")
+                continue
+
+        return count
+    except Exception as e:
+        logger.error(f"Global error in compress_batch background task for tenant {tenant.project_id}: {e}")
         return 0
 
-    count = 0
-    for obs in uncompressed:
-        try:
-            summary = await compress_observation(
-                raw_content=obs["raw_content"],
-                entities=obs.get("entities_mentioned", "[]"),
-            )
-
-            # Estimate token count (~4 chars per token)
-            token_count = len(summary) // 4
-
-            # Update episodic log with compressed summary
-            episodic.update_summary(tenant, obs["id"], summary, token_count)
-
-            # Upsert into semantic store for vector search
-            semantic.upsert_observation(
-                tenant,
-                obs_id=obs["id"],
-                summary=summary,
-                metadata={"entities": obs.get("entities_mentioned", "[]")},
-            )
-
-            count += 1
-            logger.info(f"Compressed observation {obs['id']} ({token_count} tokens)")
-
-        except Exception as e:
-            logger.error(f"Failed to compress observation {obs['id']}: {e}")
-            continue
-
-    return count
 
 
 def run_compression(tenant: Tenant, batch_size: int = 5) -> int:

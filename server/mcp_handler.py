@@ -13,12 +13,11 @@ Tools per agent.md:
   6. trace_flow    — shortest path between entities (~200 tokens)
 """
 
-import json
 import logging
 from typing import Any
 
 from namespacing.tenant import Tenant
-from memory import episodic, graph as graph_module
+from memory import graph as graph_module
 from memory.ingestion import SessionManager
 from server.tools.search_index import search_index
 from server.tools.get_timeline import get_timeline

@@ -8,7 +8,6 @@ Uses Ollama local embeddings by default (free, private, offline).
 Falls back to ChromaDB's built-in embeddings if Ollama is unavailable.
 """
 
-import os
 import chromadb
 from chromadb.config import Settings
 from typing import Optional

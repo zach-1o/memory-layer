@@ -13,10 +13,10 @@ into the three-layer memory system.
 import uuid
 import asyncio
 import logging
-from typing import Optional
+# Removed: from typing import Optional
 
 from namespacing.tenant import Tenant
-from memory import episodic, semantic, graph, compression
+from memory import episodic, graph, compression, graph_extractor # Removed: semantic
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +79,23 @@ class SessionManager:
             entities=entities,
         )
 
-        # Apply graph operations if provided
+        # Auto-populate knowledge graph from entities (CO_OCCURS)
+        if entities and len(entities) > 0:
+            try:
+                for entity_name in entities:
+                    graph.add_node(
+                        self.tenant, entity_name, node_type="entity"
+                    )
+                # Connect entities that appear together in the same observation
+                for i, e1 in enumerate(entities):
+                    for e2 in entities[i + 1 :]:
+                        graph.add_edge(
+                            self.tenant, e1, e2, relationship="CO_OCCURS"
+                        )
+            except Exception as e:
+                logger.error(f"Auto-graph population failed: {e}")
+
+        # Apply explicit graph operations if provided
         if graph_operations:
             for op in graph_operations:
                 try:
@@ -92,6 +108,9 @@ class SessionManager:
         if self._observation_count >= self._compression_threshold:
             self._trigger_compression()
             self._observation_count = 0
+
+        # Trigger background graph extraction (async, never blocks)
+        self._trigger_graph_extraction(obs_id, content, entities)
 
         return obs_id
 
@@ -158,3 +177,16 @@ class SessionManager:
         except RuntimeError:
             # No event loop running — skip compression (will be caught at session end)
             logger.debug("No event loop available for background compression")
+
+    def _trigger_graph_extraction(self, obs_id: str, raw_content: str, entities: list) -> None:
+        """Trigger background LLM graph extraction. Never blocks the caller."""
+        try:
+            import json
+            entities_str = json.dumps(entities) if isinstance(entities, list) else str(entities)
+            asyncio.get_event_loop().create_task(
+                graph_extractor.extract_and_apply(
+                    self.tenant, obs_id, raw_content, entities_str
+                )
+            )
+        except RuntimeError:
+            logger.debug("No event loop available for background graph extraction")

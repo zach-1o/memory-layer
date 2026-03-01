@@ -1,202 +1,254 @@
-import React, { useEffect, useRef, useState } from 'react';
-import axios from 'axios';
+import { useState, useEffect, useRef } from 'react';
 import cytoscape from 'cytoscape';
 
-// Node colors by type
 const NODE_COLORS = {
-    file: '#63b3ed',
-    function: '#b794f4',
-    component: '#68d391',
-    variable: '#f6ad55',
-    unknown: '#94a3b8',
+    file: '#3B82F6',
+    function: '#F59E0B',
+    component: '#EC4899',
+    variable: '#10B981',
+    entity: '#8B5CF6',
+    unknown: '#6B7280',
 };
 
-// Edge colors by relationship
 const EDGE_COLORS = {
-    CALLS: '#63b3ed',
-    IMPORTS: '#68d391',
-    INVOKES_IPC: '#f6ad55',
-    MODIFIES_STATE: '#fc8181',
-    RENDERS: '#b794f4',
-    DEPENDS_ON: '#76e4f7',
-    DEPRECATED_BY: '#64748b',
+    CO_OCCURS: '#D1D5DB',
+    CALLS: '#3B82F6',
+    READS: '#10B981',
+    WRITES: '#F59E0B',
+    IMPORTS: '#8B5CF6',
+    CONTAINS: '#6366F1',
+    LOCATED_IN: '#6B7280',
+    SENDS_TO: '#EC4899',
+    TRIGGERS: '#EF4444',
+    RETURNS: '#14B8A6',
+    LOCKS: '#DC2626',
+    CREATES: '#22C55E',
+    FIXES: '#F97316',
+    USES: '#A855F7',
+    DEPENDS_ON: '#0EA5E9',
+    EXTENDS: '#6366F1',
 };
 
-export default function GraphView({ apiKey, projectId, apiUrl }) {
+export default function GraphView({ projectId, api, apiKey }) {
     const containerRef = useRef(null);
     const cyRef = useRef(null);
+    const [graphData, setGraphData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [stats, setStats] = useState({ nodes: 0, edges: 0 });
+    const [selected, setSelected] = useState(null);
+    const [showDeprecated, setShowDeprecated] = useState(true);
 
     useEffect(() => {
-        if (!projectId) return;
+        setLoading(true);
+        fetch(`${api}/api/graph?project_id=${projectId}`, {
+            headers: { 'X-Api-Key': apiKey }
+        })
+            .then(r => r.json())
+            .then(data => { setGraphData(data); setLoading(false); })
+            .catch(err => { setError(err.message); setLoading(false); });
+    }, [projectId, api, apiKey]);
 
-        const fetchGraph = async () => {
-            setLoading(true);
-            setError(null);
+    useEffect(() => {
+        if (!graphData || !containerRef.current || !cytoscape) return;
 
-            try {
-                const res = await axios.get(`${apiUrl}/graph`, {
-                    params: { project_id: projectId },
-                    headers: { 'X-Api-Key': apiKey },
-                });
+        const nodes = (graphData.nodes || []).map(n => ({
+            data: {
+                id: n.id || n.name,
+                label: n.name || n.id,
+                type: n.type || 'unknown',
+                deprecated: !!n.invalidated_at,
+                ...n,
+            }
+        }));
 
-                const { nodes, edges } = res.data;
-                setStats({ nodes: nodes.length, edges: edges.length });
+        const edges = (graphData.links || graphData.edges || []).map((e, i) => ({
+            data: {
+                id: `edge-${i}`,
+                source: e.source,
+                target: e.target,
+                relationship: e.relationship || 'RELATED',
+            }
+        }));
 
-                // Convert to Cytoscape elements
-                const elements = [];
+        if (cyRef.current) cyRef.current.destroy();
 
-                nodes.forEach((node) => {
-                    const isInvalidated = node.invalidated_at !== null;
-                    elements.push({
-                        data: {
-                            id: node.name,
-                            label: node.name,
-                            type: node.type || 'unknown',
-                            isInvalidated,
-                        },
-                    });
-                });
-
-                edges.forEach((edge, i) => {
-                    const isInvalidated = edge.invalidated_at !== null;
-                    elements.push({
-                        data: {
-                            id: `e${i}`,
-                            source: edge.source,
-                            target: edge.target,
-                            label: edge.relationship || '',
-                            isInvalidated,
-                        },
-                    });
-                });
-
-                // Initialize Cytoscape
-                if (cyRef.current) {
-                    cyRef.current.destroy();
-                }
-
-                cyRef.current = cytoscape({
-                    container: containerRef.current,
-                    elements,
-                    style: [
-                        {
-                            selector: 'node',
-                            style: {
-                                label: 'data(label)',
-                                'background-color': (ele) =>
-                                    NODE_COLORS[ele.data('type')] || NODE_COLORS.unknown,
-                                color: '#e2e8f0',
-                                'text-valign': 'bottom',
-                                'text-margin-y': 8,
-                                'font-size': 11,
-                                'font-family': 'Inter, sans-serif',
-                                width: 40,
-                                height: 40,
-                                'border-width': 2,
-                                'border-color': (ele) =>
-                                    ele.data('isInvalidated') ? '#64748b' : 'transparent',
-                                'border-style': (ele) =>
-                                    ele.data('isInvalidated') ? 'dashed' : 'solid',
-                                opacity: (ele) => (ele.data('isInvalidated') ? 0.4 : 1),
-                            },
-                        },
-                        {
-                            selector: 'edge',
-                            style: {
-                                label: 'data(label)',
-                                'line-color': (ele) =>
-                                    EDGE_COLORS[ele.data('label')] || '#64748b',
-                                'target-arrow-color': (ele) =>
-                                    EDGE_COLORS[ele.data('label')] || '#64748b',
-                                'target-arrow-shape': 'triangle',
-                                'curve-style': 'bezier',
-                                'font-size': 9,
-                                color: '#94a3b8',
-                                'text-rotation': 'autorotate',
-                                'text-margin-y': -10,
-                                width: 2,
-                                opacity: (ele) => (ele.data('isInvalidated') ? 0.3 : 0.8),
-                                'line-style': (ele) =>
-                                    ele.data('isInvalidated') ? 'dashed' : 'solid',
-                            },
-                        },
-                        {
-                            selector: 'node:selected',
-                            style: {
-                                'border-width': 3,
-                                'border-color': '#63b3ed',
-                                'box-shadow': '0 0 20px rgba(99, 179, 237, 0.5)',
-                            },
-                        },
-                    ],
-                    layout: {
-                        name: elements.length > 0 ? 'cose' : 'grid',
-                        animate: true,
-                        animationDuration: 500,
-                        nodeRepulsion: 8000,
-                        idealEdgeLength: 120,
-                        padding: 40,
+        cyRef.current = cytoscape({
+            container: containerRef.current,
+            elements: [...nodes, ...edges],
+            style: [
+                {
+                    selector: 'node',
+                    style: {
+                        label: 'data(label)',
+                        'font-size': '11px',
+                        'font-family': 'Inter, sans-serif',
+                        color: '#111827',
+                        'text-valign': 'bottom',
+                        'text-margin-y': 8,
+                        'background-color': (ele) => NODE_COLORS[ele.data('type')] || NODE_COLORS.unknown,
+                        width: 32,
+                        height: 32,
+                        'border-width': 2,
+                        'border-color': '#fff',
                     },
-                });
-            } catch (err) {
-                if (err.response?.status !== 401) {
-                    setError('Failed to load graph data');
-                }
-            } finally {
-                setLoading(false);
-            }
-        };
+                },
+                {
+                    selector: 'node[?deprecated]',
+                    style: { opacity: 0.3 },
+                },
+                {
+                    selector: 'edge',
+                    style: {
+                        width: (ele) => ele.data('relationship') === 'CO_OCCURS' ? 1 : 2,
+                        'line-color': (ele) => EDGE_COLORS[ele.data('relationship')] || '#D1D5DB',
+                        'target-arrow-color': (ele) => EDGE_COLORS[ele.data('relationship')] || '#D1D5DB',
+                        'target-arrow-shape': 'triangle',
+                        'curve-style': 'bezier',
+                        label: 'data(relationship)',
+                        'font-size': '8px',
+                        color: (ele) => EDGE_COLORS[ele.data('relationship')] || '#9CA3AF',
+                        'text-rotation': 'autorotate',
+                        'text-margin-y': -10,
+                        opacity: (ele) => ele.data('relationship') === 'CO_OCCURS' ? 0.4 : 0.85,
+                    },
+                },
+            ],
+            layout: {
+                name: nodes.length > 20 ? 'cose' : 'cose',
+                animate: true,
+                animationDuration: 500,
+                nodeRepulsion: 4500,
+                idealEdgeLength: 100,
+                padding: 40,
+            },
+        });
 
-        fetchGraph();
+        cyRef.current.on('tap', 'node', (evt) => {
+            const node = evt.target;
+            const connections = node.connectedEdges().map(edge => ({
+                relationship: edge.data('relationship'),
+                source: edge.data('source'),
+                target: edge.data('target'),
+                direction: edge.data('source') === node.data('id') ? 'outgoing' : 'incoming',
+                neighbor: edge.data('source') === node.data('id') ? edge.data('target') : edge.data('source'),
+            }));
+            setSelected({ ...node.data(), connections });
+        });
 
-        return () => {
-            if (cyRef.current) {
-                cyRef.current.destroy();
-            }
-        };
-    }, [projectId, apiKey, apiUrl]);
+        cyRef.current.on('tap', (evt) => {
+            if (evt.target === cyRef.current) setSelected(null);
+        });
 
-    if (loading) {
+        return () => { if (cyRef.current) cyRef.current.destroy(); };
+    }, [graphData, showDeprecated]);
+
+    if (loading) return <div className="loading">Loading graph…</div>;
+
+    if (error || !graphData) {
         return (
-            <div className="graph-container">
-                <div className="loading">Loading knowledge graph...</div>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="graph-container">
-                <div className="empty-state">
-                    <span className="icon">⚠️</span>
-                    <p>{error}</p>
+            <div className="empty-state">
+                <div className="empty-icon">🕸️</div>
+                <div className="empty-title">No graph data yet</div>
+                <div className="empty-desc">
+                    The knowledge graph builds automatically from entity co-occurrence.<br />
+                    Add observations with entities to see connections appear.
                 </div>
             </div>
         );
     }
 
-    return (
-        <div style={{ position: 'relative' }}>
-            <div
-                style={{
-                    position: 'absolute',
-                    top: 12,
-                    right: 16,
-                    zIndex: 10,
-                    fontSize: 12,
-                    color: 'var(--text-muted)',
-                    background: 'rgba(10, 14, 23, 0.8)',
-                    padding: '6px 12px',
-                    borderRadius: 'var(--radius-sm)',
-                    backdropFilter: 'blur(10px)',
-                }}
-            >
-                {stats.nodes} nodes • {stats.edges} edges
+    const nodeCount = graphData.nodes?.length || 0;
+    const edgeCount = (graphData.links || graphData.edges || []).length;
+
+    if (nodeCount === 0) {
+        return (
+            <div className="empty-state">
+                <div className="empty-icon">🕸️</div>
+                <div className="empty-title">No entities yet</div>
+                <div className="empty-desc">
+                    Entities are extracted from observations automatically.<br />
+                    Record observations with entity names to build the graph.
+                </div>
             </div>
-            <div ref={containerRef} className="graph-container" />
+        );
+    }
+
+    const nodeTypes = [...new Set((graphData.nodes || []).map(n => n.type || 'unknown'))];
+
+    return (
+        <div className="graph-layout">
+            <div className="graph-canvas">
+                <div ref={containerRef} style={{ width: '100%', height: '100%', minHeight: 500 }} />
+
+                {/* Legend */}
+                <div className="graph-legend">
+                    <div className="graph-legend-title">Legend</div>
+                    {nodeTypes.map(type => (
+                        <div key={type} className="graph-legend-item">
+                            <div className="graph-legend-dot" style={{ background: NODE_COLORS[type] || NODE_COLORS.unknown }} />
+                            <span className="graph-legend-label">{type}</span>
+                        </div>
+                    ))}
+                    <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 6 }}>
+                        {nodeCount} nodes · {edgeCount} edges
+                    </div>
+                </div>
+
+                {/* Hint */}
+                {!selected && (
+                    <div className="graph-hint">
+                        💡 Click any node to inspect
+                    </div>
+                )}
+            </div>
+
+            {/* Inspector Panel */}
+            <div className={`graph-inspector ${selected ? 'open' : ''}`}>
+                {selected && (
+                    <div className="inspector-inner">
+                        <div className="inspector-header">
+                            <span className="inspector-title">Node Inspector</span>
+                            <button className="inspector-close" onClick={() => setSelected(null)}>✕</button>
+                        </div>
+                        <div className="inspector-body">
+                            <div className="inspector-node-name">{selected.label || selected.name}</div>
+                            <span className="badge" style={{
+                                background: (NODE_COLORS[selected.type] || NODE_COLORS.unknown) + '18',
+                                color: NODE_COLORS[selected.type] || NODE_COLORS.unknown,
+                            }}>{selected.type}</span>
+
+                            {selected.created_at && (
+                                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 10 }}>
+                                    Created: {new Date(selected.created_at).toLocaleString()}
+                                </div>
+                            )}
+
+                            {selected.invalidated_at && (
+                                <div style={{ fontSize: 12, color: 'var(--error)', marginTop: 4 }}>
+                                    ⚠️ Deprecated: {new Date(selected.invalidated_at).toLocaleString()}
+                                </div>
+                            )}
+
+                            {selected.connections?.length > 0 && (
+                                <>
+                                    <div className="inspector-section-label">
+                                        Connections ({selected.connections.length})
+                                    </div>
+                                    {selected.connections.map((c, i) => (
+                                        <div key={i} className="inspector-connection">
+                                            <div className="inspector-conn-dir">
+                                                {c.direction === 'outgoing' ? '→ Outgoing' : '← Incoming'}
+                                            </div>
+                                            <div className="inspector-conn-name">{c.neighbor}</div>
+                                            <span className="badge" style={{ fontSize: 10 }}>{c.relationship}</span>
+                                        </div>
+                                    ))}
+                                </>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

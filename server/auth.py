@@ -13,8 +13,7 @@ import hashlib
 import sqlite3
 import logging
 from pathlib import Path
-from typing import Optional
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from collections import defaultdict
 
 from fastapi import Request, HTTPException

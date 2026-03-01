@@ -149,7 +149,7 @@ class TestGraphTraceFlow:
 
         graph.add_edge(tenant, "button", "api", "CALLS")
         graph.add_edge(tenant, "api", "handler", "CALLS")
-        graph.add_edge(tenant, "handler", "db", "MODIFIES_STATE")
+        graph.add_edge(tenant, "handler", "db", "WRITES")
 
         path = graph.trace_flow(tenant, "button", "db")
         assert path is not None
