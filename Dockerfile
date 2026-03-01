@@ -1,57 +1,83 @@
 # =============================================================================
-# Memory Layer — Production Dockerfile
+# Memory Layer — Combined Backend + Frontend Production Dockerfile
 # =============================================================================
-# Multi-stage build: install deps in builder, copy to slim runtime image.
-# Only production dependencies are installed (no test tools).
+# Single container: serves both API and Dashboard
 # =============================================================================
 
 FROM python:3.12-slim AS builder
 
 WORKDIR /build
 
-# Install build tools needed for some packages (e.g. chromadb, cryptography)
+# Install build tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc g++ \
+    gcc g++ curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy and install production requirements first (layer-cached)
+# Install Python deps
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
 # =============================================================================
-FROM python:3.12-slim AS runtime
-# =============================================================================
+FROM python:3.12-slim AS backend-builder
 
-WORKDIR /app
+WORKDIR /build
 
-# Copy installed packages from builder
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy application source
 COPY . .
 
-# Create persistent data directory
+# Create DB directory
 RUN mkdir -p /app/db
 
-# The port the application listens on (CreateOS routes to this)
+# =============================================================================
+FROM node:20-alpine AS frontend-builder
+
+WORKDIR /app
+
+COPY dashboard/package*.json ./
+RUN npm ci
+
+COPY dashboard/ ./
+RUN npm run build
+
+# =============================================================================
+FROM ubuntu:22.04 AS production
+
+WORKDIR /app
+
+# Install nginx and Python
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    nginx python3 python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy backend
+COPY --from=backend-builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=backend-builder /usr/local/bin /usr/local/bin
+COPY --from=backend-builder /app /app
+
+# Copy frontend build
+COPY --from=frontend-builder /app/dist /var/www/html
+
+# Copy nginx config (serves both frontend and proxies API)
+COPY nginx.conf /etc/nginx/sites-available/default
+
+# Create symlink for nginx
+RUN ln -sf /etc/nginx/sites-available/default /etc/nginx/sites-enabled/ \
+    && rm -f /etc/nginx/sites-enabled/default \
+    && mkdir -p /run/nginx
+
+# Environment
 ENV PORT=8000
 ENV HOST=0.0.0.0
+ENV PYTHONPATH=/app
 
-# Expose the port
-EXPOSE 8000
+EXPOSE 8000 37777
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
+    CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
 
-# Install Node.js for building the dashboard
-RUN apt-get update && apt-get install -y nodejs npm && rm -rf /var/lib/apt/lists/*
-COPY dashboard/package*.json ./dashboard/
-RUN cd dashboard && npm ci
-COPY dashboard/ ./dashboard/
-RUN cd dashboard && npm run build
-
-# Start the FastAPI server via uvicorn
-CMD ["python", "-m", "uvicorn", "server.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Start nginx (handles both frontend + API proxy)
+CMD ["sh", "-c", "nginx & python3 -m uvicorn server.main:app --host 0.0.0.0 --port 8000 & wait"]
