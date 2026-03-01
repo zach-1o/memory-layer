@@ -6,7 +6,7 @@ import KeyManager from './KeyManager';
 import ProjectDetail from './ProjectDetail';
 import './index.css';
 
-const API = 'http://localhost:37777';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:37777';
 
 // ── Shared Components ──
 
