@@ -10,6 +10,13 @@ export default defineConfig({
                 target: 'http://localhost:8000',
                 changeOrigin: true,
             },
+            '/mcp': {
+                target: 'http://localhost:8000',
+                changeOrigin: true,
+            },
         },
+    },
+    define: {
+        __API_URL__: JSON.stringify(process.env.VITE_API_URL || ''),
     },
 });

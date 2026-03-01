@@ -132,6 +132,17 @@ async def extract_and_apply(tenant: Tenant, obs_id: str, raw_content: str, entit
     Extract triples from a single observation and apply them to the graph.
     Returns number of edges added.
     """
+    # Check if already extracted by looking for a graph edge with this obs as source
+    existing = graph.get_all_edges(tenant)
+    already_done = any(
+        e.get("metadata", {}).get("source_obs") == obs_id
+        for e in existing
+        if isinstance(e.get("metadata"), dict)
+    )
+    if already_done:
+        logger.info(f"Skipping already-extracted obs {obs_id}")
+        return 0
+
     triples = await extract_triples(raw_content, entities)
 
     count = 0

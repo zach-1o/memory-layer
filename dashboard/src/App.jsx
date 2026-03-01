@@ -6,17 +6,17 @@ import KeyManager from './KeyManager';
 import ProjectDetail from './ProjectDetail';
 import './index.css';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:37777';
+const API = import.meta.env.VITE_API_URL || window.location.origin;
 
 // ── Shared Components ──
 
 function Badge({ children, type }) {
-    return <span className={`badge ${type || ''}`}>{children}</span>;
+    return <span className={`badge ${type || ''} `}>{children}</span>;
 }
 
 function Btn({ children, onClick, variant = 'secondary', size, ...rest }) {
     return (
-        <button className={`btn btn-${variant} ${size === 'sm' ? 'btn-sm' : ''}`} onClick={onClick} {...rest}>
+        <button className={`btn btn - ${variant} ${size === 'sm' ? 'btn-sm' : ''} `} onClick={onClick} {...rest}>
             {children}
         </button>
     );
@@ -72,7 +72,7 @@ function Sidebar({ screen, onNavigate }) {
                 {mainNav.map(item => (
                     <div
                         key={item.id}
-                        className={`sidebar-item ${screen === item.id ? 'active' : ''}`}
+                        className={`sidebar - item ${screen === item.id ? 'active' : ''} `}
                         onClick={() => onNavigate(item.id)}
                     >
                         <span className="sidebar-item-icon">{item.icon}</span>
@@ -100,7 +100,7 @@ function HomeScreen({ onSelectProject, apiKey }) {
 
     useEffect(() => {
         setLoading(true);
-        fetch(`${API}/api/projects`, { headers: { 'X-Api-Key': apiKey } })
+        fetch(`${API} /api/projects`, { headers: { 'X-Api-Key': apiKey } })
             .then(r => r.json())
             .then(data => { setProjects(Array.isArray(data) ? data : []); setLoading(false); })
             .catch(() => { setProjects([]); setLoading(false); });
@@ -201,7 +201,7 @@ function ProjectCard({ project, onClick }) {
                     <span className="health-bar-value" style={{ color: healthColor }}>{health}%</span>
                 </div>
                 <div className="health-bar-track">
-                    <div className="health-bar-fill" style={{ width: `${health}%`, background: healthColor }} />
+                    <div className="health-bar-fill" style={{ width: `${health}% `, background: healthColor }} />
                 </div>
 
                 {project.last_active && (
@@ -224,7 +224,7 @@ export default function App() {
     // Check if server is reachable periodically
     useEffect(() => {
         const checkServer = () => {
-            fetch(`${API}/api/projects`, { method: 'HEAD' })
+            fetch(`${API} /api/projects`, { method: 'HEAD' })
                 .then(() => setIsServerDown(false))
                 .catch(() => setIsServerDown(true));
         };

@@ -19,6 +19,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
 # Add project root to path
@@ -74,6 +75,9 @@ app.add_middleware(
     expose_headers=["Mcp-Session-Id"],
 )
 
+dist_path = Path(__file__).parent.parent / "dashboard" / "dist"
+if dist_path.exists():
+    app.mount("/", StaticFiles(directory=str(dist_path), html=True), name="static")
 
 @app.get("/health")
 async def health_check():
@@ -323,11 +327,10 @@ async def list_projects(request: Request):
                 row = cur.fetchone()
                 project_info["last_active"] = row[0] if row else None
                 # Try to read the original project_id from the first session
-                cur.execute("SELECT raw_content FROM observations WHERE action_type='session_start' LIMIT 1")
+                cur.execute("SELECT project_id FROM observations LIMIT 1")
                 row = cur.fetchone()
                 if row and row[0]:
-                    # Session start content often contains the project name
-                    project_info["project_id"] = row[0][:50] if len(row[0]) > 2 else project_info["project_id"]
+                    project_info["project_id"] = row[0]
                 conn.close()
             except Exception:
                 pass

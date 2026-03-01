@@ -157,23 +157,33 @@ class SessionManager:
     def _trigger_compression(self) -> None:
         """Trigger background compression. Never blocks the caller."""
         try:
-            # Fire and forget — compression failures must never block MCP
-            asyncio.get_event_loop().create_task(
-                compression.compress_batch(self.tenant)
-            )
+            loop = asyncio.get_running_loop()
+            loop.create_task(compression.compress_batch(self.tenant))
         except RuntimeError:
-            # No event loop running — skip compression (will be caught at session end)
-            logger.debug("No event loop available for background compression")
+            import threading
+            threading.Thread(
+                target=lambda: asyncio.run(compression.compress_batch(self.tenant)),
+                daemon=True
+            ).start()
 
     def _trigger_graph_extraction(self, obs_id: str, raw_content: str, entities: list) -> None:
         """Trigger background LLM graph extraction. Never blocks the caller."""
         try:
             import json
             entities_str = json.dumps(entities) if isinstance(entities, list) else str(entities)
-            asyncio.get_event_loop().create_task(
+            loop = asyncio.get_running_loop()
+            loop.create_task(
                 graph_extractor.extract_and_apply(
                     self.tenant, obs_id, raw_content, entities_str
                 )
             )
         except RuntimeError:
-            logger.debug("No event loop available for background graph extraction")
+            # No running loop — schedule via thread instead
+            import threading
+            import json
+            entities_str = json.dumps(entities) if isinstance(entities, list) else str(entities)
+            def run_in_thread():
+                asyncio.run(graph_extractor.extract_and_apply(
+                    self.tenant, obs_id, raw_content, entities_str
+                ))
+            threading.Thread(target=run_in_thread, daemon=True).start()

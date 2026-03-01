@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 
 export default function ProjectDetail({ project, apiKey, onNavigate, onOpenLayer }) {
-    const API = import.meta.env.VITE_API_URL || 'http://localhost:37777';
+    const API = import.meta.env.VITE_API_URL || window.location.origin;
     const [stats, setStats] = useState({ obs: project.obs_count, entities: project.entity_count, sessions: project.session_count });
 
     const health = Math.min(100, Math.round((stats.obs * 3 + stats.entities * 5)));
