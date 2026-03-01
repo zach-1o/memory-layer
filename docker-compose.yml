@@ -1,7 +1,7 @@
 version: "3.9"
 
 services:
-  memory-layer:
+  api:
     build:
       context: .
       dockerfile: Dockerfile
@@ -11,6 +11,16 @@ services:
       - .env
     volumes:
       - db_data:/app/db
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    ports:
+      - "37777:37777"
+    depends_on:
+      - api
     restart: unless-stopped
 
 volumes:
