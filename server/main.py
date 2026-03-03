@@ -75,9 +75,6 @@ app.add_middleware(
     expose_headers=["Mcp-Session-Id"],
 )
 
-dist_path = Path(__file__).parent.parent / "dashboard" / "dist"
-if dist_path.exists():
-    app.mount("/", StaticFiles(directory=str(dist_path), html=True), name="static")
 
 @app.get("/health")
 async def health_check():
@@ -498,6 +495,11 @@ def _jsonrpc_error(req_id, code, message):
         "error": {"code": code, "message": message},
     }
 
+
+# Mount static files (dashboard) at the very end so it doesn't shadow other routes!
+dist_path = Path(__file__).parent.parent / "dashboard" / "dist"
+if dist_path.exists():
+    app.mount("/", StaticFiles(directory=str(dist_path), html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn
