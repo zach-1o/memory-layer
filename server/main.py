@@ -82,6 +82,19 @@ async def health_check():
     return {"status": "ok", "service": "memory-layer"}
 
 
+@app.get("/")
+async def root():
+    """Root endpoint — serves info when dashboard dist/ is not built."""
+    return {
+        "service": "memory-layer",
+        "version": "0.1.0",
+        "status": "ok",
+        "docs": "/docs",
+        "health": "/health",
+        "mcp": "/mcp",
+    }
+
+
 def _handle_mcp_method(method: str, params: dict, req_id, auth) -> dict | None:
     """
     Handle an MCP JSON-RPC method call. Returns the result dict,
